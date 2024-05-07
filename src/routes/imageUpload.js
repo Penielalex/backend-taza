@@ -12,13 +12,18 @@ const {createToken, validateToken} = require('../middleware/JWT')
 const multer = require('multer')
 
 const storage = multer.diskStorage({
-    destination:(req, file, cb) =>{
-    cb(null, path.join(__dirname, '../../user_Images/'))},
-    filename: (req, file, cb) => {
-        console.log(file)
-        cb(null, Date.now() + path.extname(file.originalname))
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(__dirname, '../../user_Images/');
+    // Check if the directory exists, if not, create it
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
     }
-})
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
 const propertystorage = multer.diskStorage({
   destination:(req, file, cb) =>{
   cb(null, path.join(__dirname, '../../property_Images/'))},
