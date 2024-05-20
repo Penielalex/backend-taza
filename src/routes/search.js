@@ -26,7 +26,7 @@ router.get('/searchBroker', async (req, res) => {
         ],
       },
       include: [
-        { model: userImage, as: 'userImage', attributes: ['name'] },
+        { model: userImage, as: 'userImage', attributes: ['url'] },
         // Add associations for comments and properties if needed
       ],
     });
@@ -52,7 +52,7 @@ router.get('/searchBroker', async (req, res) => {
 
     // Map the users to include the image link, property count, total comments, average rate, and comments details
     const usersWithDetails = users.map((user) => {
-      const imageLink = user.userImage ? `/user_Images/${user.userImage.name}` : null;
+      const imageLink =user.userImage.url;
 
       // Filter properties and comments based on user ID
       const userProperties = properties.filter(property => property.brokerId === user.id);
@@ -149,14 +149,14 @@ router.get('/searchProperties', async (req, res) => {
 
       for (const property of allProperties) {
         const imageUrls = property.propertyImages.map((image) => {
-          return `/property_Images/${image.name}`;
+          return image.url;
         });
   
         let userImage = '';
   
         if (property.user && property.user.userImage) {
           // Directly access the single user image
-          userImage = `/user_Images/${property.user.userImage.name}`;
+          userImage = property.user.userImage.url;
         }
   
         // Search for comments for the current user

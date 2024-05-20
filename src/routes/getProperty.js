@@ -5,21 +5,18 @@ const {property, propertyImage, user, userImage, comment} = require('../../model
 const db = require('../../models');
 const path = require('path')
 const fs = require("fs");
-
+const { bucket } = require('../../config/firebase');
 const multer = require('multer')
 
 
-const propertystorage = multer.diskStorage({
-  destination:(req, file, cb) =>{
-  cb(null, path.join(__dirname, '../../property_Images/'))},
-  filename: (req, file, cb) => {
-      console.log(file)
-      cb(null, Date.now() + path.extname(file.originalname))
-  }
-})
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
 
-
-const propUpload =multer({storage:propertystorage})
+const extractFilePathFromUrl = (url) => {
+  const matches = url.match(/property_images\/[^?]+/);
+  return matches ? matches[0] : null;
+};
 
 
 
@@ -41,26 +38,26 @@ router.get('/getAllProperties', async (req, res) => {
     const propertiesWithDetails = [];
 
     for (const property of allProperties) {
-      const imageUrls = property.propertyImages.map((image) => {
-        return `/property_Images/${image.name}`;
-      });
+      const imageUrls = property.propertyImages.map((image) => image.url);
 
       let userImage = '';
-      console.log(property.user)
+      console.log(property.user);
 
       if (property.user && property.user.userImage) {
         // Directly access the single user image
-        userImage = `/user_Images/${property.user.userImage.name}`;
+        userImage = property.user.userImage.url;
       }
-      
 
       // Search for comments for the current user
-      const userComments = await comment.findAll({
-        where: {
-          brokerId: property.user.id,
-        },
-        attributes: ['rateNo'], // Select only 'rateNo' for comments
-      });
+      const brokerId = property.user ? property.user.id : null;
+
+      let userComments = [];
+      if (brokerId) {
+        userComments = await comment.findAll({
+          where: { brokerId },
+          attributes: ['rateNo'], // Select only 'rateNo' for comments
+        });
+      }
 
       // Calculate total comments and sum of rateNo
       const totalComments = userComments.length;
@@ -68,13 +65,13 @@ router.get('/getAllProperties', async (req, res) => {
 
       // Calculate average rate
       const average = totalComments > 0 ? sumRateNo / totalComments : 0;
-      const averageRate= parseFloat(average.toFixed(1));
+      const averageRate = parseFloat(average.toFixed(1));
 
       propertiesWithDetails.push({
         ...property.toJSON(),
         propertyImages: imageUrls,
         user: {
-          ...property.user.toJSON(),
+          ...property.user ? property.user.toJSON() : {},
           userImage: userImage || null, // Handle null user image
           totalComments,
           averageRate,
@@ -84,9 +81,10 @@ router.get('/getAllProperties', async (req, res) => {
 
     // Respond with the list of properties, associated image URLs, user information, and user images
     res.status(200).json(propertiesWithDetails);
+
     propertiesWithDetails.forEach(property => {
       console.log('Data types for property:');
-      console.log(`id: ${ user.firstName}`);
+      console.log(`id: ${property.user ? property.user.firstName : 'N/A'}`);
       console.log(`type: ${typeof property.type}`);
       console.log(`city: ${typeof property.city}`);
       console.log(`price: ${typeof property.price}`);
@@ -97,6 +95,7 @@ router.get('/getAllProperties', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 
   router.get('/getPropertyById/:id', async (req, res) => {
@@ -111,7 +110,7 @@ router.get('/getAllProperties', async (req, res) => {
       if (foundProperty) {
         // Map the property to include only image URLs
         const imageUrls = foundProperty.propertyImages.map((image) => {
-          return `/propertyImages/${image.name}`;
+          return image.url;
         });
   
         // Respond with the property and associated image URLs
@@ -132,7 +131,7 @@ router.get('/getAllProperties', async (req, res) => {
   });
   
 
-  router.get('/getPropertiesByBrokerId/:brokerId', validateToken(['Broker']), async (req, res) => {
+  router.get('/getPropertiesByBrokerId/:brokerId', validateToken(['Broker','Seller']), async (req, res) => {
     try {
       const brokerId = req.params.brokerId;
   
@@ -145,7 +144,7 @@ router.get('/getAllProperties', async (req, res) => {
       // Map the properties to include only image URLs
       const propertiesWithImageUrls = brokerProperties.map((property) => {
         const imageUrls = property.propertyImages.map((image) => {
-          return `/property_Images/${image.name}`;
+          return image.url;
         });
   
         return {
@@ -175,7 +174,7 @@ router.get('/getAllProperties', async (req, res) => {
       // Map the properties to include only image URLs
       const propertiesWithImageUrls = brokerProperties.map((property) => {
         const imageUrls = property.propertyImages.map((image) => {
-          return `/property_Images/${image.name}`;
+          return image.url;
         });
   
         return {
@@ -192,18 +191,18 @@ router.get('/getAllProperties', async (req, res) => {
     }
   });
 
-
-  router.put('/updateProperty/:id', validateToken(['Broker','Seller']), propUpload.array('images', 5), async (req, res) => {
-    const transaction = await db.sequelize.transaction();
+  router.put('/updateProperty/:id', validateToken(['Broker', 'Seller']), upload.array('images', 5), async (req, res) => {
+    const transaction = await property.sequelize.transaction();
   
     try {
       const propertyId = req.params.id;
-      console.log('propertyID:'+propertyId)
+      console.log('propertyID:', propertyId);
   
       // Check if the property with the specified ID exists
       const existingProperty = await property.findByPk(propertyId, {
         include: [{ model: propertyImage, as: 'propertyImages' }],
       });
+  
       if (!existingProperty) {
         await transaction.rollback();
         return res.status(404).json({ error: 'Property not found' });
@@ -227,55 +226,62 @@ router.get('/getAllProperties', async (req, res) => {
         { transaction }
       );
   
-      // Update associated property images if provided in the request
+      // If new images are uploaded, delete previous images and upload new ones
       if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+        // Delete previous images from Firebase Storage and the database
         const existingImages = await propertyImage.findAll({
-            where: { propertyId: propertyId },
-            attributes: ['name'], // Assuming 'name' is the property that stores the file name
-            raw: true,
-            transaction,
+          where: { propertyId: propertyId },
+          transaction,
         });
-    
-        existingImages.forEach((image) => {
-            const imagePath = path.join(__dirname, '../../property_Images/', image.name);
-            const tmpPath = path.join(__dirname, '../../property_Images/tmp', image.name);
-
-    
-            // Delete the file from the server
-            fs.unlinkSync(imagePath);
-            fs.unlinkSync(tmpPath);
-            
-        });
-        
-        // Delete existing property images
+  
+        for (const image of existingImages) {
+          const filePath = extractFilePathFromUrl(image.url);
+          if (filePath) {
+            const imageRef = bucket.file(filePath);
+            await imageRef.delete();
+          }
+        }
+  
         await propertyImage.destroy({
           where: { propertyId: propertyId },
           transaction,
         });
   
-        // Create new property images
-        const newImages = req.files.map((file) => {
-            const imagePath = path.join(__dirname, '../../property_Images/') + file.filename;
-            return {
-              type: file.mimetype,
-              name: file.filename,
-              data: fs.readFileSync(imagePath),
-              propertyId: propertyId,
-            };
+        // Upload new property images to Firebase Storage and update URLs in the database
+        const imagePromises = req.files.map(async (file) => {
+          const newFileName = `property_images/${Date.now()}_${file.originalname}`;
+          const blob = bucket.file(newFileName);
+          const blobStream = blob.createWriteStream({
+            metadata: {
+              contentType: file.mimetype,
+            },
           });
-          
-          // Write new images to the tmp directory
-          newImages.forEach((newImage) => {
-            const tmpPath = path.join(__dirname, '../../property_Images/tmp/') + newImage.name;
-            fs.writeFileSync(tmpPath, newImage.data);
+  
+          await new Promise((resolve, reject) => {
+            blobStream.on('error', reject);
+            blobStream.on('finish', resolve);
+            blobStream.end(file.buffer);
           });
-          
-          // Use propertyImage.bulkCreate to create new images within the transaction
-          await propertyImage.bulkCreate(newImages, { transaction });
-          
+  
+          const [url] = await blob.getSignedUrl({
+            action: 'read',
+            expires: '03-01-2500',
+          });
+  
+          const image = await propertyImage.create({
+            type: file.mimetype,
+            name: newFileName,
+            url,
+            propertyId,
+          }, { transaction });
+  
+          return { propertyImageId: image.id };
+        });
+  
+        await Promise.all(imagePromises);
       }
   
-      // Fetch the updated property data
+      // Fetch the updated property data with new image URLs
       const updatedProperty = await property.findByPk(propertyId, {
         include: [{ model: propertyImage, as: 'propertyImages' }],
         transaction,
@@ -293,8 +299,9 @@ router.get('/getAllProperties', async (req, res) => {
       res.status(500).json({ error: 'Internal Server Error' });
     }
   });
-
-  router.delete('/deleteProperty/:id',validateToken(['Broker','Seller']), async (req, res) => {
+  
+  
+  router.delete('/deleteProperty/:id', validateToken(['Broker', 'Seller']), async (req, res) => {
     const propertyId = req.params.id;
   
     try {
@@ -307,19 +314,19 @@ router.get('/getAllProperties', async (req, res) => {
         return res.status(404).json({ error: 'Property not found' });
       }
   
-      // Delete the associated images on the server
+      // Delete the associated images from Firebase Storage
       for (const image of existingProperty.propertyImages) {
-        const imagePath = path.join(__dirname, '../../property_Images/', image.name);
-        const tmpPath = path.join(__dirname, '../../property_Images/tmp', image.name);
-
-
-        // Delete the file from the server
-        fs.unlinkSync(imagePath);
-        fs.unlinkSync(tmpPath);
+        const filePath = extractFilePathFromUrl(image.url);
+        if (filePath) {
+          const fileRef = bucket.file(filePath);
+          await fileRef.delete();
+        }
       }
   
-      // Delete the temporary images in the tmp directory
-      
+      // Delete the property images from the database
+      await propertyImage.destroy({
+        where: { propertyId: propertyId },
+      });
   
       // Delete the property
       await existingProperty.destroy();

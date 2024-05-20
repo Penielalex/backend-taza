@@ -39,7 +39,7 @@ const storage = multer.diskStorage({
 
         if (userWithImageAndComments) {
             // Construct the image link
-            const imageLink = `/user_Images/${userWithImageAndComments.userImage.name}`;
+            const imageLink = userWithImageAndComments.userImage ? userWithImageAndComments.userImage.url : null;
             const commentNo = brokerComments.length;
             const totalRate = brokerComments.reduce(
                 (sum, comment) => sum + comment.rateNo,
