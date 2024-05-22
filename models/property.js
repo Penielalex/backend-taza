@@ -43,10 +43,14 @@ module.exports = (sequelize, DataTypes)=>{
             type: DataTypes.BOOLEAN,
             allowNull: false,
           },
-          count: {
+          countContact: {
             type: DataTypes.INTEGER,
             allowNull: false,
-          }
+          },
+          views: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+          },
 
           //three foregn keys one from seller id, broker id, image id
 

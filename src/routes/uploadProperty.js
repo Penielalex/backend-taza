@@ -5,7 +5,7 @@ const {property} = require('../../models');
 
 
 router.post('/uploadproperty', validateToken(['Broker','Seller']), async(req, res)=>{
-    const {type,houseType,city,subCity,bedRoomNo,bathRoomNo,price,status,count,brokerId, sellerId}= req.body;
+    const {type,houseType,city,subCity,bedRoomNo,bathRoomNo,price,status,countContact,views,brokerId, sellerId}= req.body;
 
     property.create({
         type:type,
@@ -16,7 +16,8 @@ router.post('/uploadproperty', validateToken(['Broker','Seller']), async(req, re
         bathRoomNo:bathRoomNo,
         price:price,
         status:status,
-        count:count,
+        countContact:countContact,
+        views:views,
         brokerId:brokerId,
         sellerId:sellerId
     }).then((savedProperty) =>{

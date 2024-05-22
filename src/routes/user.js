@@ -8,16 +8,17 @@ const path = require('path');
 const fs = require("fs");
 const bcrypt =require('bcrypt')
 const db = require('../../models');
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, path.join(__dirname, '../../user_Images/'));
-    },
-    filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname));
-    }
-  });
+const { bucket } = require('../../config/firebase');
+
   
-  const upload = multer({ storage: storage });
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
+
+const extractFilePathFromUrl = (url) => {
+  const matches = url.match(/user_images\/[^?]+/);
+  return matches ? matches[0] : null;
+};
 
   router.get('/getUserWithImage/:id', async (req, res) => {
     try {
@@ -81,70 +82,82 @@ const storage = multer.diskStorage({
     }
 });
 
-  router.put('/updateUser/:id', upload.single('image'),validateToken(['Broker']), async (req, res) => {
-    
+router.put('/updateUser/:id', upload.single('image'), validateToken(['Broker']), async (req, res) => {
+  try {
+    const userId = req.params.id;
 
-    try {
-      const userId = req.params.id;
-  
-      // Check if the user with the specified ID exists
-      const existingUser = await user.findOne({
-            where: { id: userId },
-            include: [
-              { model: userImage, as: 'userImage' },
-            ],
-          });
+    // Check if the user with the specified ID exists
+    const existingUser = await user.findOne({
+      where: { id: userId },
+      include: [
+        { model: userImage, as: 'userImage' },
+      ],
+    });
 
-      if (!existingUser) {
-        await transaction.rollback();
-        return res.status(404).json({ error: 'User not found' });
-      }
-  
-      // Extract updated user data from the request body
-      const { firstName, lastName, city, subCity, phoneNo } = req.body;
-  
-      // Update the user data
-      await existingUser.update({
-        firstName: firstName || existingUser.firstName,
-        lastName: lastName || existingUser.lastName,
-        city: city || existingUser.city,
-        subCity: subCity || existingUser.subCity,
-        phoneNo: phoneNo || existingUser.phoneNo,
-      },
-      
-      );
-  
-      // Check if a new image file is provided
-      if (req.file) {
-        // If yes, update or create the associated userImage
-        const userImageInstance = await userImage.findOne({ where: { id: existingUser.userImageId } });
-        if (userImageInstance) {
-          // Update the existing userImage
-          await userImageInstance.update({
-            type: req.file.mimetype,
-            name: req.file.filename,
-            data: req.file.buffer,
-            
-            
-          });
-        } else {
-          // Create a new userImage if it doesn't exist
-          await userImage.create({
-            id: existingUser.userImageId,
-            type: req.file.mimetype,
-            name: req.file.filename,
-            data: req.file.buffer,
-          });
-        }
-      }
-  
-      // Respond with the updated user data
-      res.status(200).json({ message: 'User updated successfully', user: existingUser });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
     }
-  });
+
+    // Extract updated user data from the request body
+    const { firstName, lastName, city, subCity, phoneNo } = req.body;
+
+    // Update the user data
+    await existingUser.update({
+      firstName: firstName || existingUser.firstName,
+      lastName: lastName || existingUser.lastName,
+      city: city || existingUser.city,
+      subCity: subCity || existingUser.subCity,
+      phoneNo: phoneNo || existingUser.phoneNo,
+    });
+
+    // Check if a new image file is provided
+    if (req.file) {
+      // If yes, delete the existing image from Firebase (if any)
+      if (existingUser.userImage) {
+        const filePath = extractFilePathFromUrl(existingUser.userImage.url);
+          if (filePath) {
+            const imageRef = bucket.file(filePath);
+            await imageRef.delete();
+          }
+      }
+
+      // Upload the new image to Firebase
+      const newImageName = `user_images/${Date.now()}_${req.file.originalname}`;
+      const file = bucket.file(newImageName);
+      await file.save(req.file.buffer, {
+        metadata: { contentType: req.file.mimetype },
+        public: true,
+      });
+
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+
+      // Update or create the associated userImage
+      const userImageInstance = await userImage.findOne({ where: { id: existingUser.userImageId } });
+      if (userImageInstance) {
+        // Update the existing userImage
+        await userImageInstance.update({
+          type: req.file.mimetype,
+          name: newImageName,
+          url: publicUrl,
+        });
+      } else {
+        // Create a new userImage if it doesn't exist
+        await userImage.create({
+          userId: existingUser.id,
+          type: req.file.mimetype,
+          name: newImageName,
+          url: publicUrl,
+        });
+      }
+    }
+
+    // Respond with the updated user data
+    res.status(200).json({ message: 'User updated successfully', user: existingUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
   router.put('/changePassword/:id', validateToken(['Buyer', 'Seller', 'Broker']), async (req, res) => {
     try {
