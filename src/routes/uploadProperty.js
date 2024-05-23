@@ -30,4 +30,53 @@ router.post('/uploadproperty', validateToken(['Broker','Seller']), async(req, re
 }
     );
 
+    router.put('/incrementPropertyCount/:id', async (req, res) => {
+        try {
+          const propertyId = req.params.id;
+      
+          // Find the property by ID
+          const propertyF = await property.findOne({ where: { id: propertyId } });
+      
+          if (!propertyF) {
+            return res.status(404).json({ error: 'Property not found' });
+          }
+      
+          // Increment the count by 1
+          propertyF.countContact += 1;
+      
+          // Save the updated property
+          await propertyF.save();
+      
+          // Respond with the updated property data
+          res.status(200).json({ message: 'Property count incremented successfully', property: propertyF });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ error: 'Internal Server Error' });
+        }
+      });
+      router.put('/incrementPropertyView/:id', async (req, res) => {
+        try {
+          const propertyId = req.params.id;
+      
+          // Find the property by ID
+          const propertyF = await property.findOne({ where: { id: propertyId } });
+      
+          if (!propertyF) {
+            return res.status(404).json({ error: 'Property not found' });
+          }
+      
+          // Increment the count by 1
+          propertyF.views += 1;
+      
+          // Save the updated property
+          await propertyF.save();
+      
+          // Respond with the updated property data
+          res.status(200).json({ message: 'Property count incremented successfully', property: propertyF });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ error: 'Internal Server Error' });
+        }
+      });
+
 module.exports = router
