@@ -23,7 +23,7 @@ router.post('/create-payment', async (req, res) => {
         first_name: existingUser.firstName,
         last_name: existingUser.lastName,
         phone_number: existingUser.phoneNo,
-        callback_url:"https://backend-taza.onrender.com/verify-payment/${tx_ref}",
+       callback_url:"https://backend-taza.onrender.com/verify-payment",
         tx_ref: tx_ref,
         
       }, {
@@ -44,6 +44,7 @@ router.post('/create-payment', async (req, res) => {
         return res.json({
           msg: "Order created successfully. Perform payment.",
           paymentUrl: response.data["data"]["checkout_url"],
+          tx_ref: tx_ref
         });
       } else {
         return res.status(500).json({
@@ -51,13 +52,18 @@ router.post('/create-payment', async (req, res) => {
         });
       }
     } catch (error) {
-      console.error(error);
+      if (error.response) {
+      console.error('Error status:', error.response.status);
+      console.error('Error data:', error.response.data);
+    } else {
+      console.error('Error message:', error.message);
+    }
       res.status(500).json({ error: 'Failed to create payment' });
     }
   });
 
-  router.post('/verify-payment/:tx_ref', async (req, res) => {
-    const { tx_ref } = req.params;
+  router.post('/verify-payment/', async (req, res) => {
+    const { tx_ref } = req.body;
 
     try {
         const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${tx_ref}`, {
@@ -82,9 +88,12 @@ router.post('/create-payment', async (req, res) => {
             }
             existinguser.paid = true;
             await existinguser.save();
+            return res.json(response.data.data.status);
+        }else{
+         return res.status(404).json({ error: 'status still pending' });
         }
 
-        res.json({ success: true });
+        
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to verify payment' });
