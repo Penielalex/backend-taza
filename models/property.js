@@ -51,6 +51,10 @@ module.exports = (sequelize, DataTypes)=>{
             type: DataTypes.INTEGER,
             allowNull: false,
           },
+          paid: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+          },
 
           //three foregn keys one from seller id, broker id, image id
 

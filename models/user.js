@@ -37,6 +37,10 @@ module.exports = (sequelize, DataTypes)=>{
             type: DataTypes.STRING,
             allowNull: false,
           },
+          paid: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+          },
           //two foregn keys one from Role one From UserImage
 
     });
