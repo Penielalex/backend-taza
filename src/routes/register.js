@@ -7,14 +7,14 @@ router.post('/register', async (req, res) => {
     const { firstName, lastName, city, subCity, phoneNo, password, roleId, userImageId } = req.body;
 
     try {
-        const existingUser = await User.findOne({ where: { phoneNo: phoneNo } });
+        const existingUser = await user.findOne({ where: { phoneNo: phoneNo } });
         if (existingUser) {
             return res.status(400).json({ error: 'Phone number is already registered.' });
         }
 
         bcrypt.hash(password, 10).then(async (hash) => {
             try {
-                const newUser = await User.create({
+                const newUser = await user.create({
                     firstName,
                     lastName,
                     city,
