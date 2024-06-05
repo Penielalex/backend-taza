@@ -4,7 +4,7 @@ const bcrypt =require('bcrypt')
 const { user } = require("../../models");
 
 router.post('/register', async (req, res) => {
-    const { firstName, lastName, city, subCity, phoneNo, password, roleId, userImageId } = req.body;
+    const { firstName, lastName, city, subCity,woreda, phoneNo, password, roleId, userImageId } = req.body;
 
     try {
         const existingUser = await user.findOne({ where: { phoneNo: phoneNo } });
@@ -19,6 +19,7 @@ router.post('/register', async (req, res) => {
                     lastName,
                     city,
                     subCity,
+                    woreda,
                     phoneNo,
                     password: hash,
                     roleId,

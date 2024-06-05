@@ -66,6 +66,7 @@ router.get('/searchBroker', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         subCity: user.subCity,
+        woreda: user.woreda,
         phoneNo:user.phoneNo,
         image: imageLink,
         averageRate:parseFloat(averageRate.toFixed(1)),

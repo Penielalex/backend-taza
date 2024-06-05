@@ -57,6 +57,7 @@ const extractFilePathFromUrl = (url) => {
                 lastName: userWithImageAndComments.lastName,
                 city: userWithImageAndComments.city,
                 subCity: userWithImageAndComments.subCity,
+                woreda:userWithImageAndComments.woreda,
                 phoneNo:userWithImageAndComments.phoneNo,
                 commentNo: commentNo,
                 averageRate: parseFloat(averageRate.toFixed(1)),
@@ -99,7 +100,7 @@ router.put('/updateUser/:id', upload.single('image'), validateToken(['Broker']),
     }
 
     // Extract updated user data from the request body
-    const { firstName, lastName, city, subCity, phoneNo } = req.body;
+    const { firstName, lastName, city, subCity,woreda, phoneNo } = req.body;
 
     // Update the user data
     await existingUser.update({
@@ -107,6 +108,7 @@ router.put('/updateUser/:id', upload.single('image'), validateToken(['Broker']),
       lastName: lastName || existingUser.lastName,
       city: city || existingUser.city,
       subCity: subCity || existingUser.subCity,
+      woreda: woreda || existingUser.woreda,
       phoneNo: phoneNo || existingUser.phoneNo,
     });
 

@@ -28,6 +28,10 @@ module.exports = (sequelize, DataTypes)=>{
             type: DataTypes.STRING,
             allowNull: true,
           },
+          woreda: {
+            type: DataTypes.STRING,
+            allowNull: true,
+          },
           phoneNo: {
             type: DataTypes.STRING,
             allowNull: false,
