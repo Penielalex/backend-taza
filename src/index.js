@@ -54,7 +54,7 @@ async function ensureRolesExist() {
 
 
 
-db.sequelize.sync().then(() =>{
+db.sequelize.sync({force:true}).then(() =>{
     ensureRolesExist().then(() => {
         app.listen(PORT, () => {
           console.log('App listening on port ' + PORT);
