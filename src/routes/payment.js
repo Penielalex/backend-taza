@@ -17,14 +17,14 @@ router.post('/create-payment', async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
       const tx_ref = `${existingUser.firstName}-${Date.now()}`;
-      const url = 'https://backend-taza.onrender/verify-payment/';
+      
       const response = await axios.post('https://api.chapa.co/v1/transaction/mobile-initialize', {
         amount,
         currency: 'ETB',
         first_name: existingUser.firstName,
         last_name: existingUser.lastName,
         phone_number: existingUser.phoneNo,
-       callback_url:url+tx_ref,
+        callback_url: "http://localhost:3000/verify-payment",
         tx_ref: tx_ref,
         
       }, {
@@ -59,16 +59,16 @@ router.post('/create-payment', async (req, res) => {
     }
   });
 
-  router.post('/verify-payment/:id', async (req, res) => {
+  router.post('/verify-payment', async (req, res) => {
     
 
     try {
-        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/`+ req.params.id, {
+        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.params.tx_ref}`, {
             headers: {
                 Authorization: 'Bearer CHASECK_TEST-VNHcYDRNqJ4LXi0ADJ7gWophtt9qBsHV',
             }
         });
-        const chapaPaymentId = req.params.id;
+        const chapaPaymentId = req.params.tx_ref;
 
         const pay = await payment.findOne({ where: { chapaPaymentId } });
         if (!pay) {

@@ -209,7 +209,7 @@ router.get('/getAllProperties', async (req, res) => {
       }
   
       // Extract updated property data from the request body
-      const { type, houseType, city, subCity, bedRoomNo, bathRoomNo, price, status } = req.body;
+      const { type, houseType, city, subCity, bedRoomNo, bathRoomNo, price, status, specificPlace, woreda,description } = req.body;
   
       // Update the property data
       await existingProperty.update(
@@ -222,6 +222,9 @@ router.get('/getAllProperties', async (req, res) => {
           bathRoomNo: bathRoomNo || existingProperty.bathRoomNo,
           price: price || existingProperty.price,
           status: status || existingProperty.status,
+          specificPlace: specificPlace || existingProperty.specificPlace,
+          woreda: woreda || existingProperty.woreda,
+          description: description || existingProperty.description
         },
         { transaction }
       );

@@ -27,6 +27,18 @@ module.exports = (sequelize, DataTypes)=>{
             type: DataTypes.STRING,
             allowNull: false,
           },
+          specificPlace: {
+            type: DataTypes.STRING,
+            allowNull: false,
+          },
+          woreda: {
+            type: DataTypes.STRING,
+            allowNull: false,
+          },
+          description: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+          },
           bedRoomNo: {
             type: DataTypes.STRING,
             allowNull: false,

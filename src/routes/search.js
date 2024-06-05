@@ -89,108 +89,126 @@ router.get('/searchBroker', async (req, res) => {
 });
 
 
+
+
 router.get('/searchProperties', async (req, res) => {
-    try {
-      // Extract filters from the query parameters
-      const filters = req.query;
-  
-      // Define the conditions for the property query
-      const conditions = {};
-  
-      // Apply filters for each property field
-      if (filters.type) {
-        conditions.type = filters.type;
-      }
-  
-      if (filters.houseType) {
-        conditions.houseType = filters.houseType;
-      }
-  
-      if (filters.city) {
-        conditions.city = filters.city;
-      }
-  
-      if (filters.subCity) {
-        conditions.subCity = filters.subCity;
-      }
-  
-      if (filters.bedRoomNo) {
-        conditions.bedRoomNo = filters.bedRoomNo;
-      }
-  
-      if (filters.bathRoomNo) {
-        conditions.bathRoomNo = filters.bathRoomNo;
-      }
-  
-      // Apply filter for the price range
-      if (filters.minPrice && filters.maxPrice) {
-        conditions.price = {
+  try {
+    // Extract filters from the query parameters
+    const filters = req.query;
+
+    // Define the conditions for the property query
+    const conditions = [];
+
+    // Apply filters for each property field
+    if (filters.type) {
+      conditions.push({ type: filters.type });
+    }
+
+    if (filters.houseType) {
+      conditions.push({ houseType: filters.houseType });
+    }
+
+    if (filters.city) {
+      conditions.push({ city: filters.city });
+    }
+
+    if (filters.subCity) {
+      conditions.push({ subCity: filters.subCity });
+    }
+
+    if (filters.bedRoomNo) {
+      conditions.push({ bedRoomNo: filters.bedRoomNo });
+    }
+
+    if (filters.bathRoomNo) {
+      conditions.push({ bathRoomNo: filters.bathRoomNo });
+    }
+
+    if (filters.woreda) {
+      conditions.push({ woreda: filters.woreda });
+    }
+
+    // Apply filter for the price range
+    if (filters.minPrice && filters.maxPrice) {
+      conditions.push({
+        price: {
           [Op.between]: [filters.minPrice, filters.maxPrice],
-        };
-      }
-  console.log(conditions);
-      // Include property images in the result and map them to links
-      const allProperties = await property.findAll({
-        where: {
-        [Op.and]:conditions,},
-        include: [{ model: propertyImage, as: 'propertyImages' },
-        { 
-          model: user, 
-          as: 'user', 
-          include: [{ model: userImage, as: 'userImage' }]
-          // Assuming your user image model is named 'userImage'
+        },
+      });
+    }
+
+    // SpecificPlace filter (optional/non-strict)
+    if (filters.specificPlace) {
+      conditions.push({
+        [Op.or]: [
+          { specificPlace: { [Op.like]: `%${filters.specificPlace}%` } },
+          { specificPlace: { [Op.eq]: null } }, // Include properties with no specificPlace
+        ],
+      });
+    }
+
+    console.log(conditions);
+
+    // Include property images in the result and map them to links
+    const allProperties = await property.findAll({
+      where: {
+        [Op.and]: conditions,
+      },
+      include: [
+        { model: propertyImage, as: 'propertyImages' },
+        {
+          model: user,
+          as: 'user',
+          include: [{ model: userImage, as: 'userImage' }],
         },
       ],
-      });
-  
-      // Map the properties to include image links
-      // Map the properties to include user information, user images, and property image URLs
-      const propertiesWithDetails = [];
+    });
 
-      for (const property of allProperties) {
-        const imageUrls = property.propertyImages.map((image) => {
-          return image.url;
-        });
-  
-        let userImage = '';
-  
-        if (property.user && property.user.userImage) {
-          // Directly access the single user image
-          userImage = property.user.userImage.url;
-        }
-  
-        // Search for comments for the current user
-        const userComments = await comment.findAll({
-          where: {
-            brokerId: property.user.id,
-          },
-          attributes: ['rateNo'], // Select only 'rateNo' for comments
-        });
-  
-        // Calculate total comments and sum of rateNo
-        const totalComments = userComments.length;
-        const sumRateNo = userComments.reduce((sum, comment) => sum + comment.rateNo, 0);
-  
-        // Calculate average rate
-        const average = totalComments > 0 ? sumRateNo / totalComments : 0;
-        const averageRate= parseFloat(average.toFixed(1));
-  
-        propertiesWithDetails.push({
-          ...property.toJSON(),
-          propertyImages: imageUrls,
-          user: {
-            ...property.user.toJSON(),
-            userImage: userImage,
-            totalComments,
-            averageRate,
-          },
-        });
+    // Map the properties to include image links
+    const propertiesWithDetails = [];
+
+    for (const property of allProperties) {
+      const imageUrls = property.propertyImages.map((image) => image.url);
+
+      let userImage = '';
+
+      if (property.user && property.user.userImage) {
+        userImage = property.user.userImage.url;
       }
-      res.status(200).json(propertiesWithDetails);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
+
+      // Search for comments for the current user
+      const userComments = await comment.findAll({
+        where: {
+          brokerId: property.user.id,
+        },
+        attributes: ['rateNo'], // Select only 'rateNo' for comments
+      });
+
+      // Calculate total comments and sum of rateNo
+      const totalComments = userComments.length;
+      const sumRateNo = userComments.reduce((sum, comment) => sum + comment.rateNo, 0);
+
+      // Calculate average rate
+      const average = totalComments > 0 ? sumRateNo / totalComments : 0;
+      const averageRate = parseFloat(average.toFixed(1));
+
+      propertiesWithDetails.push({
+        ...property.toJSON(),
+        propertyImages: imageUrls,
+        user: {
+          ...property.user.toJSON(),
+          userImage: userImage,
+          totalComments,
+          averageRate,
+        },
+      });
     }
-  });
+    res.status(200).json(propertiesWithDetails);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
   module.exports = router;
