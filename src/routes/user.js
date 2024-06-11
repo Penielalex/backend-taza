@@ -83,6 +83,68 @@ const extractFilePathFromUrl = (url) => {
     }
 });
 
+router.get('/getAllUsersWithImages', async (req, res) => {
+  try {
+    // Retrieve all users with role 1 along with associated image filenames and comments
+    const usersWithImagesAndComments = await user.findAll({
+      where: { roleId: 1 },
+      include: [
+        { model: userImage, as: 'userImage' },
+      ],
+    });
+
+    // Retrieve all properties and comments
+    const allProperties = await property.findAll();
+    const allComments = await comment.findAll();
+
+    if (usersWithImagesAndComments.length > 0) {
+      const response = usersWithImagesAndComments.map(userWithImageAndComments => {
+        const brokerProperties = allProperties.filter(property => property.brokerId === userWithImageAndComments.id);
+        const brokerComments = allComments.filter(comment => comment.brokerId === userWithImageAndComments.id);
+
+        const imageLink = userWithImageAndComments.userImage ? userWithImageAndComments.userImage.url : null;
+        const commentNo = brokerComments.length;
+        const totalRate = brokerComments.reduce(
+          (sum, comment) => sum + comment.rateNo,
+          0
+        );
+
+        const averageRate = commentNo === 0 ? 0 : totalRate / commentNo;
+
+        return {
+          id: userWithImageAndComments.id,
+          firstName: userWithImageAndComments.firstName,
+          lastName: userWithImageAndComments.lastName,
+          city: userWithImageAndComments.city,
+          subCity: userWithImageAndComments.subCity,
+          woreda: userWithImageAndComments.woreda,
+          phoneNo: userWithImageAndComments.phoneNo,
+          commentNo: commentNo,
+          averageRate: parseFloat(averageRate.toFixed(1)),
+          noOfProperty: brokerProperties.length,
+          image: imageLink,
+          comments: brokerComments.map(comment => ({
+            id: comment.id,
+            comment: comment.comment,
+            rateNo: comment.rateNo,
+            brokerId: comment.brokerId,
+            commenterId: comment.commenterId,
+          })),
+        };
+      });
+
+      res.status(200).json(response);
+    } else {
+      res.status(404).json({ error: 'No users found' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
 router.put('/updateUser/:id', upload.single('image'), validateToken(['Broker']), async (req, res) => {
   try {
     const userId = req.params.id;

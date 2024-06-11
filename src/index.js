@@ -17,6 +17,7 @@ const user = require('./routes/user');
 const search= require('./routes/search');
 const comment= require('./routes/comment');
 const payment= require('./routes/payment');
+const saveProperty = require('./routes/saveProperty');
 
 app.use(compression());
 
@@ -30,6 +31,7 @@ app.use(user);
 app.use(search);
 app.use(comment);
 app.use(payment);
+app.use(saveProperty)
 app.use('/property_Images', express.static('property_Images'));
 app.use('/user_Images', express.static('user_Images'));
 
@@ -54,7 +56,7 @@ async function ensureRolesExist() {
 
 
 
-db.sequelize.sync().then(() =>{
+db.sequelize.sync({force: true}).then(() =>{
     ensureRolesExist().then(() => {
         app.listen(PORT, () => {
           console.log('App listening on port ' + PORT);
