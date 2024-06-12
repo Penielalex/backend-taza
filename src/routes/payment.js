@@ -63,7 +63,7 @@ router.post('/create-payment', async (req, res) => {
     
 
     try {
-        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.params.trx_ref}`, {
+        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.query.trx_ref}`, {
             headers: {
                 Authorization: 'Bearer CHASECK_TEST-VNHcYDRNqJ4LXi0ADJ7gWophtt9qBsHV',
             }
