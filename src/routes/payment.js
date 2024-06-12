@@ -18,13 +18,14 @@ router.post('/create-payment', async (req, res) => {
       }
       const tx_ref = `${existingUser.firstName}-${Date.now()}`;
       
-      const response = await axios.post('https://api.chapa.co/v1/transaction/mobile-initialize', {
+      const response = await axios.post('https://api.chapa.co/v1/transaction/initialize', {
         amount,
         currency: 'ETB',
         first_name: existingUser.firstName,
         last_name: existingUser.lastName,
         phone_number: existingUser.phoneNo,
-        callback_url: "https://backend-taza.onrender.com/verify-payment/",
+        callback_url: "https://backend-taza.onrender.com/verify-payment/" + tx_ref,
+        return_url: "https://backend-taza.onrender.com/verify-payment/" + tx_ref,
         tx_ref: tx_ref,
         
       }, {
@@ -59,11 +60,11 @@ router.post('/create-payment', async (req, res) => {
     }
   });
 
-  router.get('/verify-payment', async (req, res) => {
+  router.get('/verify-payment/:tx_ref', async (req, res) => {
     
 
     try {
-        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.query.trx_ref}`, {
+        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.params.tx_ref}`, {
             headers: {
                 Authorization: 'Bearer CHASECK_TEST-VNHcYDRNqJ4LXi0ADJ7gWophtt9qBsHV',
             }
