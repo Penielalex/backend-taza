@@ -24,7 +24,7 @@ router.post('/create-payment', async (req, res) => {
         first_name: existingUser.firstName,
         last_name: existingUser.lastName,
         phone_number: existingUser.phoneNo,
-        callback_url: "http://localhost:3000/verify-payment/",
+        callback_url: "https://backend-taza.onrender.com/verify-payment/",
         tx_ref: tx_ref,
         
       }, {
