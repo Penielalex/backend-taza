@@ -24,7 +24,7 @@ router.post('/create-payment', async (req, res) => {
         first_name: existingUser.firstName,
         last_name: existingUser.lastName,
         phone_number: existingUser.phoneNo,
-        callback_url: "http://localhost:3000/verify-payment",
+        callback_url: "http://localhost:3000/verify-payment/",
         tx_ref: tx_ref,
         
       }, {
@@ -59,11 +59,11 @@ router.post('/create-payment', async (req, res) => {
     }
   });
 
-  router.post('/verify-payment', async (req, res) => {
+  router.get('/verify-payment', async (req, res) => {
     
 
     try {
-        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.params.tx_ref}`, {
+        const response = await axios.get(`https://api.chapa.co/v1/transaction/verify/${req.params.trx_ref}`, {
             headers: {
                 Authorization: 'Bearer CHASECK_TEST-VNHcYDRNqJ4LXi0ADJ7gWophtt9qBsHV',
             }
