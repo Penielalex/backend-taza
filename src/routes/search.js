@@ -65,6 +65,7 @@ router.get('/searchBroker', async (req, res) => {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
+        city: user.city,
         subCity: user.subCity,
         woreda: user.woreda,
         phoneNo:user.phoneNo,

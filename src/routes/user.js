@@ -119,9 +119,9 @@ router.get('/getAllUsersWithImages', async (req, res) => {
           subCity: userWithImageAndComments.subCity,
           woreda: userWithImageAndComments.woreda,
           phoneNo: userWithImageAndComments.phoneNo,
-          commentNo: commentNo,
+          totalComments: commentNo,
           averageRate: parseFloat(averageRate.toFixed(1)),
-          noOfProperty: brokerProperties.length,
+          properties: brokerProperties.length,
           image: imageLink,
           comments: brokerComments.map(comment => ({
             id: comment.id,
