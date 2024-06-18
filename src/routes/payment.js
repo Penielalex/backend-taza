@@ -6,7 +6,7 @@ const {property, propertyImage, user, userImage, payment, buyerNumber} = require
 const axios = require('axios');
 const crypto = require('crypto');
 
-router.post('/create-payment', async (req, res) => {
+router.post('/create-payment/broker', async (req, res) => {
     const { amount, userId,fromRole } = req.body;
     //const Chapa_Auth_Key = CHASECK_TEST-VNHcYDRNqJ4LXi0ADJ7gWophtt9qBsHV;
     
@@ -24,8 +24,8 @@ router.post('/create-payment', async (req, res) => {
         first_name: existingUser.firstName,
         last_name: existingUser.lastName,
         phone_number: existingUser.phoneNo,
-        callback_url: "https://backend-taza.onrender.com/verify-payment/" + tx_ref,
-        return_url: "https://backend-taza.onrender.com/verify-payment/" + tx_ref,
+        callback_url: "https://backend-taza.onrender.com/verify-payment/broker" + tx_ref,
+        //return_url: "https://backend-taza.onrender.com/verify-payment/broker" + tx_ref,
         tx_ref: tx_ref,
         
       }, {
@@ -60,7 +60,7 @@ router.post('/create-payment', async (req, res) => {
     }
   });
 
-  router.get('/verify-payment/:tx_ref', async (req, res) => {
+  router.get('/verify-payment/broker/:tx_ref', async (req, res) => {
     
 
     try {
