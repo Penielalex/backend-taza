@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {createToken, validateToken} = require('../middleware/JWT');
 const { user, userImage, comment } = require('../../models');
-const {property, propertyImage} = require('../../models');
+const {property, propertyImage, savedProperty} = require('../../models');
 const multer = require('multer');
 const path = require('path');
 const fs = require("fs");
@@ -258,6 +258,120 @@ router.put('/updateUser/:id', upload.single('image'), validateToken(['Broker']),
       res.status(500).json({ error: 'Internal Server Error' });
     }
   });
+
+  router.delete('/deleteUser/:id/:role', async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const userRole = req.params.role; // Get the role from the request
+  
+      // Check if the user with the specified ID exists
+      const existingUser = await user.findOne({
+        where: { id: userId },
+        include: [
+          { model: userImage, as: 'userImage' }, // Include the userImage
+        ],
+      });
+  
+      if (!existingUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      // Handle deletion based on the role
+      if (userRole === 'Broker') {
+        // If userImage exists, delete the image from Firebase
+        if (existingUser.userImage) {
+          const filePath = extractFilePathFromUrl(existingUser.userImage.url);
+          if (filePath) {
+            const imageRef = bucket.file(filePath);
+            await imageRef.delete(); // Delete the image from Firebase
+          }
+  
+          // Also delete the userImage record from the database
+          await userImage.destroy({ where: { id: existingUser.userImageId } });
+        }
+  
+        // Find all properties associated with the user (broker)
+        const brokerProperties = await property.findAll({ where: { brokerId: userId } });
+  
+        // Loop through each property and delete associated property images, saved properties, and the property itself
+        for (const prop of brokerProperties) {
+          const propertyId = prop.id;
+  
+          // Find and delete property images from Firebase and database
+          const propertyImages = await propertyImage.findAll({ where: { propertyId: propertyId } });
+          for (const img of propertyImages) {
+            const filePath = extractFilePathFromUrl(img.url);
+            if (filePath) {
+              const imageRef = bucket.file(filePath);
+              await imageRef.delete(); // Delete the image from Firebase
+            }
+  
+            // Delete the propertyImage record from the database
+            await propertyImage.destroy({ where: { id: img.id } });
+          }
+  
+          // Delete associated savedProperty entries
+          await savedProperty.destroy({ where: { propertyId: propertyId } });
+  
+          // Delete the property record itself
+          await property.destroy({ where: { id: propertyId } });
+        }
+  
+        // Delete broker comments associated with the user
+        await comment.destroy({ where: { brokerId: userId } });
+  
+      } else if (userRole === 'Buyer') {
+        // Delete only saved properties where buyerId matches the userId
+        await savedProperty.destroy({ where: { buyerId: userId } });
+  
+      } else if (userRole === 'Seller') {
+        // Sellers do not have userImage, so skip that part
+  
+        // Find all properties associated with the user (seller)
+        const sellerProperties = await property.findAll({ where: { brokerId: userId } });
+  
+        // Loop through each property and delete associated property images, saved properties, and the property itself
+        for (const prop of sellerProperties) {
+          const propertyId = prop.id;
+  
+          // Find and delete property images from Firebase and database
+          const propertyImages = await propertyImage.findAll({ where: { propertyId: propertyId } });
+          for (const img of propertyImages) {
+            const filePath = extractFilePathFromUrl(img.url);
+            if (filePath) {
+              const imageRef = bucket.file(filePath);
+              await imageRef.delete(); // Delete the image from Firebase
+            }
+  
+            // Delete the propertyImage record from the database
+            await propertyImage.destroy({ where: { id: img.id } });
+          }
+  
+          // Delete associated savedProperty entries
+          await savedProperty.destroy({ where: { propertyId: propertyId } });
+  
+          // Delete the property record itself
+          await property.destroy({ where: { id: propertyId } });
+        }
+  
+        // Delete seller comments associated with the user
+        
+      }
+  
+      // Delete the user from the database
+      await user.destroy({ where: { id: existingUser.id } });
+  
+      res.status(200).json({ message: 'User and associated data deleted successfully' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+  
+  
+  
+  
+  
   
   module.exports = router;
 
