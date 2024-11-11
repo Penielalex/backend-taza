@@ -31,6 +31,32 @@ router.post('/saveProperty', async (req, res) => {
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   });
+
+  router.delete('/deleteSavedProperty', async (req, res) => {
+    const { buyerId, propertyId } = req.body;
+  
+    try {
+      // Check if the entry exists
+      const existingEntry = await savedProperty.findOne({
+        where: { buyerId, propertyId },
+      });
+  
+      if (!existingEntry) {
+        return res.status(404).json({ message: 'Saved property not found.' });
+      }
+  
+      // Delete the saved property
+      await savedProperty.destroy({
+        where: { buyerId, propertyId },
+      });
+  
+      return res.status(200).json({ message: 'Saved property deleted successfully.' });
+    } catch (error) {
+      console.error('Error deleting saved property:', error);
+      return res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+  
   
 
   router.get('/getPropertiesByBuyer/:buyerId', async (req, res) => {
