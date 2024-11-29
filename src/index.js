@@ -56,10 +56,23 @@ async function ensureRolesExist() {
 
 
 
-db.sequelize.sync().then(() =>{
-    ensureRolesExist().then(() => {
-        app.listen(PORT, () => {
-          console.log('App listening on port ' + PORT);
-        });
-      });
-});
+  db.sequelize
+  .authenticate() // First, authenticate to test the connection
+  .then(() => {
+    console.log('Database connection established successfully.');
+    return db.sequelize.sync(); // Proceed with syncing if authentication succeeds
+  })
+  .then(() => {
+    console.log('Database synchronized successfully.');
+    return ensureRolesExist(); // Call your custom logic
+  })
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log('App listening on port ' + PORT);
+      console.log(`Running in ${process.env.NODE_ENV || 'development'} mode`);
+    });
+  })
+  .catch((error) => {
+    console.error('Error during database setup:', error.stack); // Log the error stack
+  });
+

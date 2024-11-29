@@ -15,10 +15,10 @@
     "dialect": "mysql"
   },
   "production": {
-    "username": "ascualqy_taza2",
-    "password": "BVSqLUyRxqdauBxjKJuZ",
-    "database": "ascualqy_taza2",
-    "host": "iridium.da.hostns.io",
+    "username": "huluteyk_gojodata",
+    "password": "aK3uZ9KaQNwaMy3UKrsP",
+    "database": "huluteyk_gojodata",
+    "host": "da-uk3.hostns.io",
     "dialect": "mysql"
   }
 }
