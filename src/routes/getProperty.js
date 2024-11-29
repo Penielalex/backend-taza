@@ -22,79 +22,82 @@ const extractFilePathFromUrl = (url) => {
 
 router.get('/getAllProperties', async (req, res) => {
   try {
-    // Retrieve all properties from the database along with associated property images, user information, and user images
-    const allProperties = await property.findAll({
+    // Fetch all properties with associated images and user information in parallel
+    const allPropertiesPromise = property.findAll({
       include: [
         { model: propertyImage, as: 'propertyImages' },
-        { 
-          model: user, 
-          as: 'user', 
+        {
+          model: user,
+          as: 'user',
           include: [{ model: userImage, as: 'userImage' }]
         },
       ],
     });
 
-    // Map the properties to include user information, user images, and property image URLs
-    const propertiesWithDetails = [];
+    // Fetch all comments for the relevant brokers at once in parallel
+    const allProperties = await allPropertiesPromise;
+    const brokerIds = allProperties.map(property => property.user?.id).filter(Boolean);
+    const commentsPromise = brokerIds.length
+      ? comment.findAll({
+          where: { brokerId: brokerIds },
+          attributes: ['brokerId', 'rateNo'],
+        })
+      : Promise.resolve([]); // Resolve empty array if no brokerIds
 
-    for (const property of allProperties) {
+    // Wait for both the properties and comments
+    const comments = await commentsPromise;
+
+    // Group comments by brokerId for efficient access
+    const commentsByBroker = comments.reduce((acc, { brokerId, rateNo }) => {
+      if (!acc[brokerId]) acc[brokerId] = [];
+      acc[brokerId].push(rateNo);
+      return acc;
+    }, {});
+
+    // Efficiently process properties and their details in a single pass
+    const propertiesWithDetails = allProperties.map(property => {
       const imageUrls = property.propertyImages.map((image) => image.url);
+      const userImage = property.user?.userImage?.url || null;
+      const brokerId = property.user?.id;
 
-      let userImage = '';
-      console.log(property.user);
-
-      if (property.user && property.user.userImage) {
-        // Directly access the single user image
-        userImage = property.user.userImage.url;
-      }
-
-      // Search for comments for the current user
-      const brokerId = property.user ? property.user.id : null;
-
-      let userComments = [];
-      if (brokerId) {
-        userComments = await comment.findAll({
-          where: { brokerId },
-          attributes: ['rateNo'], // Select only 'rateNo' for comments
-        });
-      }
-
-      // Calculate total comments and sum of rateNo
+      // Get the comments for the current broker from the precomputed map
+      const userComments = commentsByBroker[brokerId] || [];
       const totalComments = userComments.length;
-      const sumRateNo = userComments.reduce((sum, comment) => sum + comment.rateNo, 0);
+      const sumRateNo = userComments.reduce((sum, rateNo) => sum + rateNo, 0);
+      const averageRate = totalComments > 0 ? parseFloat((sumRateNo / totalComments).toFixed(1)) : 0;
 
-      // Calculate average rate
-      const average = totalComments > 0 ? sumRateNo / totalComments : 0;
-      const averageRate = parseFloat(average.toFixed(1));
-
-      propertiesWithDetails.push({
+      return {
         ...property.toJSON(),
         propertyImages: imageUrls,
         user: {
-          ...property.user ? property.user.toJSON() : {},
-          userImage: userImage || null, // Handle null user image
+          ...property.user?.toJSON(),
+          userImage,
           totalComments,
           averageRate,
         },
-      });
-    }
+      };
+    });
 
-    // Respond with the list of properties, associated image URLs, user information, and user images
+    // Respond with the properties and associated details
     res.status(200).json(propertiesWithDetails);
 
+    // Log data types for debugging purposes
     propertiesWithDetails.forEach(property => {
       console.log('Data types for property:');
-      console.log(`id: ${property.user ? property.user.firstName : 'N/A'}`);
+      console.log(`id: ${property.user?.firstName || 'N/A'}`);
       console.log(`type: ${typeof property.type}`);
       console.log(`city: ${typeof property.city}`);
       console.log(`price: ${typeof property.price}`);
-      console.log(`status: ${typeof property.user.averageRate}`);
+      console.log(`status: ${typeof property.user?.averageRate}`);
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+
 
 
 
