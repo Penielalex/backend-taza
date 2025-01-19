@@ -343,5 +343,21 @@ router.get('/getAllProperties', async (req, res) => {
       res.status(500).json({ error: 'Internal Server Error' });
     }
   });
+
+  router.get("/trigger-job", (req, res) => {
+    // Perform the task your cron job is meant to trigger
+    console.log("Cron job triggered at:", new Date());
+  
+    // Send a response
+    res.status(200).json({
+      success: true,
+      message: "Cron job executed successfully",
+      timestamp: new Date(),
+    });
+  });
+
+
+
+
   
   module.exports = router;
