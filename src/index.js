@@ -18,6 +18,7 @@ const search= require('./routes/search');
 const comment= require('./routes/comment');
 const payment= require('./routes/payment');
 const saveProperty = require('./routes/saveProperty');
+const advertisement = require('./routes/advertisement');
 
 app.use(compression());
 
@@ -31,9 +32,11 @@ app.use(user);
 app.use(search);
 app.use(comment);
 app.use(payment);
-app.use(saveProperty)
+app.use(saveProperty);
+app.use(advertisement);
 app.use('/property_Images', express.static('property_Images'));
 app.use('/user_Images', express.static('user_Images'));
+app.use('/advertisements', express.static('advertisements'));
 
 
 

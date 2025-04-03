@@ -186,7 +186,7 @@ router.put('/updateUser/:id', upload.single('image'), validateToken(['Broker']),
       }
 
       // Upload the new image to Firebase
-      const newImageName = `user_images/${Date.now()}_${req.file.originalname}`;
+      const newImageName = `user_images/${Date.now()}_user`;
       const file = bucket.file(newImageName);
       await file.save(req.file.buffer, {
         metadata: { contentType: req.file.mimetype },

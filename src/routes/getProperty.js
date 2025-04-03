@@ -255,7 +255,7 @@ router.get('/getAllProperties', async (req, res) => {
   
         // Upload new property images to Firebase Storage and update URLs in the database
         const imagePromises = req.files.map(async (file) => {
-          const newFileName = `property_images/${Date.now()}_${file.originalname}`;
+          const newFileName = `property_images/${Date.now()}_property`;
           const blob = bucket.file(newFileName);
           const blobStream = blob.createWriteStream({
             metadata: {

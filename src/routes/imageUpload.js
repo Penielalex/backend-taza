@@ -36,7 +36,7 @@ router.post('/propertyimageupload', propUpload.array('images', 6), validateToken
 
     const imagePromises = req.files.map(async (file) => {
       const fileName = `${Date.now()}_${file.originalname}`;
-      const blob = bucket.file(`property_images/${Date.now()}_${file.originalname}`);
+      const blob = bucket.file(`property_images/${Date.now()}_property`);
       const blobStream = blob.createWriteStream({
         metadata: {
           contentType: file.mimetype,
@@ -80,7 +80,7 @@ router.post('/userupload', upload.single('image'), async (req, res) => {
       return res.status(400).send('Bad Request: You must select a file.');
     }
 
-    const blob = bucket.file(`user_images/${Date.now()}_${req.file.originalname}`);
+    const blob = bucket.file(`user_images/${Date.now()}_user`);
     const blobStream = blob.createWriteStream({
       metadata: {
         contentType: req.file.mimetype,
